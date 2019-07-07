@@ -36,8 +36,8 @@ app.use(function(error, req, res, next) {
 
 //Init function to sync DB and Drop the table if you want
 const init = async () => {
-    await user.sync({force:true}) // force: true will drop the table if it already exists
     await user_role.sync({force:true})
+    await user.sync({force:true}) // force: true will drop the table if it already exists
     console.log('Tables have synced!')
 };
 init();
