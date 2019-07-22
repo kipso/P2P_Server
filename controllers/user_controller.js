@@ -1,52 +1,89 @@
 const Sequelize = require('sequelize');
+const Op = Sequelize.Op
 const User =  require('../models/user_models');
-const User_role = require('../models/user_role_models');
+const Token = require('../models/token_models');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
 
 
 exports.user_signup = function (req, res, next) {
-    //Check for Admin Exist in user_role
-    User_role.findAll({
-        where: {
-          role: 'Admin'
+    
+    var hash_password = bcrypt.hashSync(req.body.password, 8);
+    User.create({ userName: req.body.userName.toLowerCase(), password: hash_password}).then(user => {
+        var token = jwt.sign({userId: user.id},
+            config.jwt.secret
+        );
+        Token.create({ authToken: token, userId: user.id}).then(data => {
+            res.locals.success= true,
+            res.locals.message= 'Authentication successful!',
+            res.locals.token = token
+            next();
+        }).catch(function(err){
+            next(err);
+        })
+    }).catch(function(err) {
+        if(err.name == "SequelizeUniqueConstraintError"){
+            err.status = 417;
+            err.message = "Username already taken, Please try a different one."
         }
-    }).then(data => {
-        //If Admin Exist Check for the "User" role to prevent duplicate
-        if(data.length){
-            User_role.findAll({
-                where: {
-                    role: 'User'
-                }
-            }).then(data => {
-                //If Admin and User both exist we just took the role_id and create a User row in DB.
-                if(data.length){
-                   role_id = data[0]['dataValues']['id'];
-                   User.create({ firstName: req.body.firstName, lastName: req.body.lastName, roleId: role_id }).then(user => {
-                    res.locals.message = "User created";
-                    res.locals.role = "User";
-                    next();
-                });
-                } else {
-                    //If User doesn't Exist Create a User role and Reference that Id to user Table
-                    var userRole = "User";
-                    User_role.create({role:userRole}).then(role => {
-                        User.create({ firstName: req.body.firstName, lastName: req.body.lastName, roleId: role.id }).then(user => {
-                            res.locals.message = "User created";
-                            res.locals.role = "User";
+        next(err);
+    });
+};
+
+exports.user_login = function (req, res, next){
+    User.findOne({ where: { userName: req.body.userName.toLowerCase()}, raw:true }).then(function(data){
+        if(data){
+            var id = data.id
+            var validation =  bcrypt.compareSync(req.body.password, data.password);
+            if(validation){
+                Token.findOne({ where: {userId: id}, raw:true }).then(data =>{
+                    if(data && data.userId == id){
+                        res.locals.success= true
+                        res.locals.message= 'Authentication successful!'
+                        res.locals.token = data.authToken
+                        next();
+                    } else {
+                        var token = jwt.sign({userId: id},
+                            config.jwt.secret
+                        );
+                        Token.create({ authToken: token, userId: id}).then(data => {
+                            res.locals.success= true,
+                            res.locals.message= 'Authentication successful!',
+                            res.locals.token = token
                             next();
-                        });
-                    })
-                }
-            });
-        } else{
-            //If Admin doesn't Exist Create Admin role and Refence that Id to that corresponding user.
-            var userRole = "Admin";
-            User_role.create({role:userRole}).then(role => {
-                User.create({ firstName: req.body.firstName, lastName: req.body.lastName, roleId: role.id }).then(user => {
-                    res.locals.message = "user created";
-                    res.locals.role = "Admin";
-                    next()
-                });
-            });
+                        }).catch(function(err){
+                            next(err);
+                        })
+                    }
+                }).catch(function (err){
+                    next(err);
+                })
+            } else {
+                res.locals.message = "Your password is incorrect, Please try again"
+                res.locals.success= false
+                res.status(400);
+                next();
+            }
+            
+        } else {
+            res.locals.success= false
+            res.locals.message= 'This username is not registered in our platform.'
+            res.status(404);
+            next();
         }
-    })
+    }).catch(function(err){
+        next(err);
+    });
+};
+
+exports.get_users = function (req, res, next){
+    User.findAll({attributes: ['id', 'userName'],
+        where: { id: { [Op.ne]: req.decoded.userId }}, raw:true
+      }).then(function(values){
+        res.locals.data = values;
+        next();
+      }).catch(function(err){
+        next(err);
+      });
 };
