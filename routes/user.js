@@ -18,4 +18,6 @@ router.get("/coversation/:id",middleware.checkToken,MessageController.get_conver
 
 router.post("/send-message",middleware.checkToken,MessageController.save_message);
 
+router.delete("/logout",middleware.checkToken,UserController.user_logout);
+
 module.exports = router;

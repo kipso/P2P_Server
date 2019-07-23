@@ -81,8 +81,10 @@ server.listen(port, function(){
 wss.on("connection", function(ws,req){
     console.log(" a user connected");
     var auth_token = req.url.replace("/","");
-    socketCollection[auth_token] = ws
-    
+    socketCollection[auth_token] = ws;
+    ws.on('message', function incoming(message) {
+        console.log('received:', message);
+      });
 });
 
 // wss.on('close', function (req) {

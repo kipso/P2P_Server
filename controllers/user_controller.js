@@ -87,3 +87,16 @@ exports.get_users = function (req, res, next){
         next(err);
       });
 };
+
+exports.user_logout = function (req,res,next){
+    Token.destroy({
+        where: {
+          userId: req.decoded.userId
+        }
+      }).then(function(values){
+        res.locals.success= true;
+        next();
+      }).catch(function(err){
+        next(err);
+      });
+};
