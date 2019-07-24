@@ -4,7 +4,7 @@ const Token = require('../models/token_models');
 
 var q = 'P2P';
  
-var open = require('amqplib').connect('amqp://localhost');
+var open = require('amqplib').connect('amqp://rabbit');
 module.exports = {
 consume : function(){
         open.then(function(conn) {

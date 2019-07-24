@@ -2,7 +2,7 @@ const Sequelize = require('sequelize');
 const Op = Sequelize.Op
 const Chat =  require('../models/message_models');
 
-var open = require('amqplib').connect('amqp://localhost');
+var open = require('amqplib').connect('amqp://rabbit');
 var q = 'P2P';
 
 
